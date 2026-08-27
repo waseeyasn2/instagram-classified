@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Instagram 照片集</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #000;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #111;
+  border-bottom: 1px solid #333;
+  padding: 12px 0 0 0;
+}
+
+.header h1 {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  padding-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 8px 10px 8px;
+  gap: 6px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: #222;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #333;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab.active {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+.tab .count {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+}
+
+.grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  background: #1a1a1a;
+}
+.grid img:active {
+  opacity: 0.7;
+}
+
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  flex-direction: column;
+}
+.lightbox.open { display: flex; }
+
+.lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #111;
+  flex-shrink: 0;
+}
+.lightbox-header .cat-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.lightbox-header .photo-count {
+  font-size: 13px;
+  color: #888;
+}
+.lightbox-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.lightbox-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+}
+.lightbox-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  border: none;
+  font-size: 30px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.nav-btn:active { background: rgba(0,0,0,0.7); }
+.nav-prev { left: 10px; }
+.nav-next { right: 10px; }
+
+.lightbox-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #111;
+  flex-shrink: 0;
+}
+.dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #444;
+  transition: all 0.2s;
+}
+.dot.active {
+  background: #fff;
+  width: 8px;
+  height: 8px;
+}
+.dot.near { background: #888; }
+
+.empty-msg {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  font-size: 15px;
+}
+
+@media (min-width: 600px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Instagram Photo Gallery</h1>
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-header">
+    <span class="cat-label" id="catLabel"></span>
+    <span class="photo-count" id="photoCount"></span>
+    <button class="lightbox-close" id="closeBtn">&times;</button>
+  </div>
+  <div class="lightbox-body" id="lightboxBody">
+    <button class="nav-btn nav-prev" id="prevBtn">&#8249;</button>
+    <img id="lbImg" src="" alt="">
+    <button class="nav-btn nav-next" id="nextBtn">&#8250;</button>
+  </div>
+  <div class="lightbox-footer">
+    <div class="dots" id="dots"></div>
+  </div>
+</div>
+
+<script>
+const photos = {
+  "戶外自然": [
+    "2024-08-23_12-00-37_UTC_1.jpg","2024-08-23_12-00-37_UTC_2.jpg","2024-08-23_12-00-37_UTC_3.jpg",
+    "2024-08-23_12-00-37_UTC_4.jpg","2024-08-23_12-00-37_UTC_5.jpg","2024-08-23_12-00-37_UTC_6.jpg",
+    "2024-08-23_12-00-37_UTC_7.jpg","2024-08-23_12-00-37_UTC_8.jpg","2024-08-23_12-00-37_UTC_9.jpg",
+    "2025-02-23_09-56-42_UTC_1.jpg","2025-02-23_09-56-42_UTC_2.jpg","2025-02-23_09-56-42_UTC_3.jpg",
+    "2025-02-23_09-56-42_UTC_4.jpg","2025-02-23_09-56-42_UTC_5.jpg","2025-02-23_09-56-42_UTC_6.jpg",
+    "2025-02-23_09-56-42_UTC_7.jpg","2025-02-23_09-56-42_UTC_8.jpg",
+    "2025-02-23_09-58-10_UTC_1.jpg","2025-02-23_09-58-10_UTC_2.jpg","2025-02-23_09-58-10_UTC_3.jpg",
+    "2025-02-23_09-58-10_UTC_4.jpg",
+    "2025-05-26_07-40-35_UTC_1.jpg",
+    "2025-12-26_02-47-50_UTC_1.jpg","2025-12-26_02-47-50_UTC_2.jpg","2025-12-26_02-47-50_UTC_3.jpg",
+    "2025-12-26_02-47-50_UTC_4.jpg","2025-12-26_02-47-50_UTC_5.jpg","2025-12-26_02-47-50_UTC_6.jpg",
+    "2025-12-26_02-47-50_UTC_7.jpg","2025-12-26_02-47-50_UTC_8.jpg","2025-12-26_02-47-50_UTC_9.jpg",
+    "2025-12-26_02-47-50_UTC_10.jpg","2025-12-26_02-47-50_UTC_11.jpg","2025-12-26_02-47-50_UTC_12.jpg",
+    "2026-04-08_14-41-27_UTC_5.jpg","2026-04-08_14-41-27_UTC_6.jpg","2026-04-08_14-41-27_UTC_7.jpg",
+    "2026-04-08_14-41-27_UTC_8.jpg","2026-04-08_14-41-27_UTC_9.jpg","2026-04-08_14-41-27_UTC_10.jpg",
+    "ig_11.jpg","ig_15.jpg","ig_21.jpg","ig_30.jpg","ig_39.jpg","ig_64.jpg","web_55.jpg"
+  ],
+  "城市街道": [
+    "2024-05-03_12-01-08_UTC_1.jpg","2024-05-03_12-01-08_UTC_3.jpg","2024-05-03_12-01-08_UTC_5.jpg",
+    "2024-05-03_12-01-08_UTC_6.jpg","2024-05-03_12-01-08_UTC_7.jpg",
+    "2025-05-26_07-40-35_UTC_2.jpg",
+    "2025-08-05_06-45-45_UTC_1.jpg","2025-08-05_06-45-45_UTC_2.jpg","2025-08-05_06-45-45_UTC_3.jpg",
+    "2025-08-05_06-47-32_UTC_1.jpg","2025-08-05_06-47-32_UTC_2.jpg","2025-08-05_06-47-32_UTC_3.jpg",
+    "2026-01-26_16-19-38_UTC_1.jpg","2026-01-26_16-19-38_UTC_2.jpg","2026-01-26_16-19-38_UTC_3.jpg",
+    "2026-01-26_16-19-38_UTC_4.jpg","2026-01-26_16-19-38_UTC_5.jpg","2026-01-26_16-19-38_UTC_6.jpg",
+    "2026-01-26_16-19-38_UTC_7.jpg","2026-01-26_16-19-38_UTC_8.jpg","2026-01-26_16-19-38_UTC_9.jpg",
+    "2026-01-26_16-19-38_UTC_10.jpg","2026-01-26_16-19-38_UTC_11.jpg","2026-01-26_16-19-38_UTC_12.jpg",
+    "2026-01-26_16-19-38_UTC_13.jpg","2026-01-26_16-19-38_UTC_14.jpg","2026-01-26_16-19-38_UTC_15.jpg",
+    "2026-01-26_16-19-38_UTC_16.jpg","2026-01-26_16-19-38_UTC_17.jpg",
+    "ig_28.jpg","ig_31.jpg","ig_61.jpg","ig_65.jpg","threads_42.jpg","threads_48.jpg"
+  ],
+  "室內攝影棚": [
+    "2024-05-03_12-01-08_UTC_8.jpg","2024-11-08_11-25-30_UTC_1.jpg",
+    "2025-08-05_06-45-45_UTC_4.jpg",
+    "2026-05-16_03-24-47_UTC_2.jpg","2026-05-29_03-31-06_UTC_4.jpg","2026-05-29_03-31-06_UTC_6.jpg",
+    "ig_18.jpg","ig_2.jpg","ig_5.jpg",
+    "threads_39.jpg","threads_40.jpg","threads_46.jpg","threads_49.jpg","threads_50.jpg",
+    "threads_52.jpg","threads_62.jpg","threads_67.jpg","threads_75.jpg"
+  ],
+  "婚禮會場": [
+    "2024-03-17_13-04-46_UTC_1.jpg","2024-03-17_13-04-46_UTC_2.jpg","2024-03-17_13-04-46_UTC_3.jpg",
+    "2024-05-03_12-01-08_UTC_2.jpg","2024-05-03_12-01-08_UTC_4.jpg",
+    "2024-11-08_11-25-30_UTC_2.jpg",
+    "2026-04-08_14-41-27_UTC_1.jpg","2026-04-08_14-41-27_UTC_2.jpg","2026-04-08_14-41-27_UTC_3.jpg",
+    "2026-05-16_03-24-47_UTC_4.jpg",
+    "2026-05-29_03-31-06_UTC_1.jpg","2026-05-29_03-31-06_UTC_2.jpg","2026-05-29_03-31-06_UTC_3.jpg",
+    "2026-05-29_03-31-06_UTC_5.jpg","2026-05-29_03-31-06_UTC_7.jpg","2026-05-29_03-31-06_UTC_9.jpg",
+    "ig_1.jpg","ig_10.jpg","ig_16.jpg","ig_17.jpg","ig_22.jpg","ig_27.jpg","ig_36.jpg",
+    "ig_60.jpg","ig_72.jpg","threads_44.jpg","threads_68.jpg","web_52.jpg"
+  ],
+  "教堂_儀式": [
+    "2026-04-08_14-41-27_UTC_4.jpg","2026-04-08_14-41-27_UTC_11.jpg",
+    "2026-05-16_03-24-47_UTC_1.jpg","2026-05-16_03-24-47_UTC_3.jpg",
+    "2026-05-16_03-24-47_UTC_5.jpg","2026-05-16_03-24-47_UTC_6.jpg","2026-05-16_03-24-47_UTC_7.jpg",
+    "2026-05-29_03-31-06_UTC_8.jpg","2026-05-29_03-31-06_UTC_10.jpg",
+    "ig_4.jpg","ig_6.jpg","ig_7.jpg","ig_8.jpg","ig_32.jpg","ig_33.jpg","ig_34.jpg",
+    "ig_66.jpg","ig_69.jpg","ig_71.jpg",
+    "threads_38.jpg","threads_41.jpg","threads_43.jpg","threads_45.jpg","web_68.png"
+  ]
+};
+
+const categoryLabels = {
+  "戶外自然": "戶外自然",
+  "城市街道": "城市街道",
+  "室內攝影棚": "室內攝影棚",
+  "婚禮會場": "婚禮會場",
+  "教堂_儀式": "教堂 儀式"
+};
+
+const categories = Object.keys(photos);
+let currentCategory = categories[0];
+let currentList = [];
+let currentIndex = 0;
+
+const tabsEl = document.getElementById("tabs");
+const gridEl = document.getElementById("grid");
+const lightbox = document.getElementById("lightbox");
+const lbImg = document.getElementById("lbImg");
+const catLabel = document.getElementById("catLabel");
+const photoCount = document.getElementById("photoCount");
+const dotsEl = document.getElementById("dots");
+
+function buildTabs() {
+  tabsEl.innerHTML = "";
+  categories.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "tab" + (cat === currentCategory ? " active" : "");
+    btn.innerHTML = categoryLabels[cat] + '<span class="count">' + photos[cat].length + '</span>';
+    btn.onclick = () => switchCategory(cat);
+    tabsEl.appendChild(btn);
+  });
+}
+
+function buildGrid() {
+  gridEl.innerHTML = "";
+  currentList = photos[currentCategory];
+  if (currentList.length === 0) {
+    gridEl.innerHTML = '<div class="empty-msg">此分類沒有照片</div>';
+    return;
+  }
+  currentList.forEach((file, i) => {
+    const img = document.createElement("img");
+    img.src = currentCategory + "/" + file;
+    img.alt = file;
+    img.loading = "lazy";
+    img.onclick = () => openLightbox(i);
+    gridEl.appendChild(img);
+  });
+}
+
+function switchCategory(cat) {
+  currentCategory = cat;
+  buildTabs();
+  buildGrid();
+}
+
+function openLightbox(i) {
+  currentIndex = i;
+  updateLightbox();
+  lightbox.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeLightbox() {
+  lightbox.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function updateLightbox() {
+  const file = currentList[currentIndex];
+  lbImg.src = currentCategory + "/" + file;
+  catLabel.textContent = categoryLabels[currentCategory];
+  photoCount.textContent = (currentIndex + 1) + " / " + currentList.length;
+  buildDots();
+}
+
+function buildDots() {
+  dotsEl.innerHTML = "";
+  const total = currentList.length;
+  if (total <= 30) {
+    for (let i = 0; i < total; i++) {
+      const d = document.createElement("div");
+      d.className = "dot" + (i === currentIndex ? " active" : (Math.abs(i - currentIndex) === 1 ? " near" : ""));
+      dotsEl.appendChild(d);
+    }
+  } else {
+    const range = 3;
+    for (let i = 0; i < total; i++) {
+      if (i === 0 || i === total - 1 || (i >= currentIndex - range && i <= currentIndex + range)) {
+        const d = document.createElement("div");
+        d.className = "dot" + (i === currentIndex ? " active" : (Math.abs(i - currentIndex) <= 1 ? " near" : ""));
+        dotsEl.appendChild(d);
+      } else if (dotsEl.lastChild && !dotsEl.lastChild.classList.contains("dot-skip")) {
+        const skip = document.createElement("span");
+        skip.className = "dot-skip";
+        skip.textContent = "...";
+        skip.style.cssText = "color:#555;font-size:10px;";
+        dotsEl.appendChild(skip);
+      }
+    }
+  }
+}
+
+function prevPhoto() {
+  currentIndex = (currentIndex - 1 + currentList.length) % currentList.length;
+  updateLightbox();
+}
+
+function nextPhoto() {
+  currentIndex = (currentIndex + 1) % currentList.length;
+  updateLightbox();
+}
+
+document.getElementById("closeBtn").onclick = closeLightbox;
+document.getElementById("prevBtn").onclick = (e) => { e.stopPropagation(); prevPhoto(); };
+document.getElementById("nextBtn").onclick = (e) => { e.stopPropagation(); nextPhoto(); };
+
+lightbox.addEventListener("click", (e) => {
+  if (e.target === document.getElementById("lightboxBody")) closeLightbox();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!lightbox.classList.contains("open")) return;
+  if (e.key === "Escape") closeLightbox();
+  if (e.key === "ArrowLeft") prevPhoto();
+  if (e.key === "ArrowRight") nextPhoto();
+});
+
+let touchStartX = 0;
+let touchStartY = 0;
+document.getElementById("lightboxBody").addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.getElementById("lightboxBody").addEventListener("touchend", (e) => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    if (dx < 0) nextPhoto();
+    else prevPhoto();
+  }
+}, { passive: true });
+
+buildTabs();
+buildGrid();
+</script>
+</body>
+</html>
